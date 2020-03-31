@@ -4,13 +4,9 @@ import android.content.Context;
 import android.content.res.Resources;
 import android.database.Observable;
 import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
-import android.os.Build;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
@@ -18,6 +14,7 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.cardview.widget.CardView;
 
 import java.util.List;
 
@@ -32,8 +29,6 @@ public class CardStackView extends FrameLayout {
 
     // card view 间距（单位：dp）
     private int cardStackViewSpacing = 8;
-    // card view 阴影，两个 card view 之差(单位 ： dp)
-    private int cardStackViewShadow = 4;
     // card 圆角 （单位：dp）
     private int cardStackViewRadius = 4;
     // card 背景颜色
@@ -55,7 +50,6 @@ public class CardStackView extends FrameLayout {
                     }
                 }
             };
-
 
     public CardStackView(Context context) {
         super(context);
@@ -81,17 +75,12 @@ public class CardStackView extends FrameLayout {
             View viewHeader = LayoutInflater.from(mContext).inflate(adapter.getItemLayoutIdHeader(), null);
             View viewContent = LayoutInflater.from(mContext).inflate(adapter.getItemLayoutIdContent(), null);
             CollapsibleCardView view = new CollapsibleCardView(mContext);
-            view.setCardStackViewRadius(cardStackViewRadius);
-            view.setCardViewBackgroundColor(cardViewBackgroundColor);
+            view.setCardElevation(i + 4);
+            view.setCardBackgroundColor(cardViewBackgroundColor);
+            view.setRadius(dp2px(cardStackViewRadius));
             view.setViewHeader(viewHeader);
             view.setViewContent(viewContent);
-            LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(dp2px(cardStackViewShadow), dp2px(cardStackViewShadow), dp2px(cardStackViewShadow), dp2px(cardStackViewShadow));
-            view.setLayoutParams(lp);
             adapter.bindView(view, i, adapter.getData().get(i));
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                view.setElevation(dp2px(i * 2 + cardStackViewShadow)); // 设置阴影。
-            }
             if (i == adapter.getItemCount() - 1) {
                 view.setClickable(false); // 设置最后一个不能点击。
             } else {
@@ -121,12 +110,7 @@ public class CardStackView extends FrameLayout {
         if (getChildCount() < 1) {
             return;
         }
-        CollapsibleCardView collapsibleCardView = ((CollapsibleCardView) getChildAt(0));
-        // compute width.
-        int totalWidth = getPaddingStart() + dp2px(cardStackViewShadow)
-                + collapsibleCardView.getMeasuredWidth()
-                + getPaddingEnd() + dp2px(cardStackViewShadow);
-
+        CollapsibleCardView collapsibleCardView = ((CollapsibleCardView) getChildAt(getChildCount() - 1));
         // compute height.
         final LayoutParams lp = (LayoutParams) collapsibleCardView.getLayoutParams();
         int marginTop = lp.topMargin;
@@ -136,14 +120,14 @@ public class CardStackView extends FrameLayout {
         int mHeaderViewHeight = collapsibleCardView.getViewHeader().getMeasuredHeight();
         int mContentViewHeight = collapsibleCardView.getViewContent().getMeasuredHeight();
         int totalHeight = paddingTop + marginTop
-                + mHeaderViewHeight * getChildCount()
-                + collapsibleCardView.getViewContent().getMeasuredHeight()
+                + mHeaderViewHeight * (getChildCount() - 1)
+                + collapsibleCardView.getMeasuredHeight()
                 + paddingBottom + marginBottom;
 
         if (hasExpandView()) {
-            totalHeight += mContentViewHeight + dp2px(cardStackViewSpacing);
+            totalHeight -= collapsibleCardView.getViewHeader().getMeasuredHeight();
+            totalHeight += collapsibleCardView.getMeasuredHeight() + dp2px(cardStackViewSpacing);
         }
-//        setMeasuredDimension(totalWidth, totalHeight);
         setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), totalHeight);
     }
 
@@ -196,20 +180,6 @@ public class CardStackView extends FrameLayout {
         this.onCardStackViewStateChangedListener = onCardStackViewStateChangedListener;
     }
 
-    public int getCardStackViewShadow() {
-        return cardStackViewShadow;
-    }
-
-    public void setCardStackViewShadow(int cardStackViewShadow) {
-        this.cardStackViewShadow = cardStackViewShadow;
-        for (int i = 0; i < getChildCount(); i++) {
-            CollapsibleCardView child = (CollapsibleCardView) getChildAt(i);
-            LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.setMargins(dp2px(cardStackViewShadow), dp2px(cardStackViewShadow), dp2px(cardStackViewShadow), dp2px(cardStackViewShadow));
-            child.setLayoutParams(lp);
-        }
-    }
-
     public int getCardStackViewSpacing() {
         return cardStackViewSpacing;
     }
@@ -226,7 +196,7 @@ public class CardStackView extends FrameLayout {
         this.cardStackViewRadius = cardStackViewRadius;
         for (int i = 0; i < getChildCount(); i++) {
             CollapsibleCardView child = (CollapsibleCardView) getChildAt(i);
-            child.setCardStackViewRadius(cardStackViewRadius);
+            child.setRadius(dp2px(cardStackViewRadius));
         }
     }
 
@@ -238,7 +208,7 @@ public class CardStackView extends FrameLayout {
         this.cardViewBackgroundColor = cardViewBackgroundColor;
         for (int i = 0; i < getChildCount(); i++) {
             CollapsibleCardView child = (CollapsibleCardView) getChildAt(i);
-            child.setCardViewBackgroundColor(cardViewBackgroundColor);
+            child.setCardBackgroundColor(cardViewBackgroundColor);
         }
     }
 
@@ -319,17 +289,14 @@ public class CardStackView extends FrameLayout {
         public abstract void bindView(CollapsibleCardView v, int pos, T item);
     }
 
-    public static class CollapsibleCardView extends LinearLayout {
+    public static class CollapsibleCardView extends CardView {
+        private LinearLayout container;
         private Context mContext;
 
         private boolean isExpand = false;
         private boolean isCollapse = true;
 
         private View viewHeader, viewContent;
-
-        private int cardStackViewRadius = -1;
-        private @ColorInt
-        int cardViewBackgroundColor = -1;
 
         private OnCollapsibleCardViewClickListener onCollapsibleCardViewClickListener;
 
@@ -350,35 +317,10 @@ public class CardStackView extends FrameLayout {
 
         private void init(Context context) {
             this.mContext = context;
-            setOrientation(LinearLayout.VERTICAL);
-            setCollapsibleBackground();
-        }
-
-        private void setCollapsibleBackground() {
-            GradientDrawable drawable = new GradientDrawable();
-            if (cardStackViewRadius != -1) {
-                drawable.setCornerRadius(dp2px(cardStackViewRadius));
-            }
-            drawable.setColor(cardViewBackgroundColor);
-            setBackground(drawable);
-        }
-
-        public int getCardStackViewRadius() {
-            return cardStackViewRadius;
-        }
-
-        public int getCardViewBackgroundColor() {
-            return cardViewBackgroundColor;
-        }
-
-        public void setCardStackViewRadius(int cardStackViewRadius) {
-            this.cardStackViewRadius = cardStackViewRadius;
-            setCollapsibleBackground();
-        }
-
-        public void setCardViewBackgroundColor(int cardViewBackgroundColor) {
-            this.cardViewBackgroundColor = cardViewBackgroundColor;
-            setCollapsibleBackground();
+            setUseCompatPadding(true);
+            container = new LinearLayout(context);
+            container.setOrientation(LinearLayout.VERTICAL);
+            addView(container);
         }
 
         public View getViewHeader() {
@@ -388,12 +330,11 @@ public class CardStackView extends FrameLayout {
         public void setViewHeader(View viewHeader) {
             this.viewHeader = viewHeader;
             viewHeader.setOnClickListener(v -> {
-                Log.i(TAG, "Click CollapsibleCardView Header View");
                 if (null != onCollapsibleCardViewClickListener) {
                     onCollapsibleCardViewClickListener.onCollapsibleCardViewClick(this);
                 }
             });
-            addView(viewHeader);
+            container.addView(viewHeader);
         }
 
         public View getViewContent() {
@@ -403,14 +344,13 @@ public class CardStackView extends FrameLayout {
         public void setViewContent(View viewContent) {
             this.viewContent = viewContent;
             viewContent.setOnClickListener(v -> {
-                Log.i(TAG, "Click CollapsibleCardView Content View ");
                 if (isExpand()) {
                     if (null != onCollapsibleCardViewClickListener) {
                         onCollapsibleCardViewClickListener.onCollapsibleCardViewClick(this);
                     }
                 }
             });
-            addView(viewContent);
+            container.addView(viewContent);
         }
 
         public boolean isExpand() {

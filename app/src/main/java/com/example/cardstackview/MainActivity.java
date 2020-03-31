@@ -39,12 +39,13 @@ public class MainActivity extends AppCompatActivity {
         };
         cardStackView.setAdapter(adapter);
         cardStackView.setCardStackViewRadius(12);
-        cardStackView.setCardStackViewShadow(8);
-        cardStackView.setCardStackViewSpacing(16);
+        cardStackView.setCardStackViewSpacing(4);
 
         // 自动滚动到点击的 view 附近。
         cardStackView.setOnCardStackViewStateChangedListener(collapsibleCardView -> {
-            collapsibleCardView.post(() -> scrollCardStackView(collapsibleCardView, dp2px(cardStackView.getCardStackViewSpacing() / 2)));
+            if (collapsibleCardView.isExpand()) {
+                collapsibleCardView.post(() -> scrollCardStackView(collapsibleCardView, dp2px(cardStackView.getCardStackViewSpacing() / 2)));
+            }
         });
     }
 
