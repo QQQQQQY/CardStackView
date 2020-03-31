@@ -440,7 +440,7 @@ public class CardStackView extends FrameLayout {
         }
     }
 
-    public static int dp2px(final float dpValue) {
+    private static int dp2px(final float dpValue) {
         final float scale = Resources.getSystem().getDisplayMetrics().density;
         return (int) (dpValue * scale + 0.5f);
     }
