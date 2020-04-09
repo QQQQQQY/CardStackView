@@ -75,7 +75,7 @@ public class CardStackView extends FrameLayout {
             View viewHeader = LayoutInflater.from(mContext).inflate(adapter.getItemLayoutIdHeader(), null);
             View viewContent = LayoutInflater.from(mContext).inflate(adapter.getItemLayoutIdContent(), null);
             CollapsibleCardView view = new CollapsibleCardView(mContext);
-            view.setCardElevation(i + 4);
+            view.setCardElevation((i + 1) * 4);
             view.setCardBackgroundColor(cardViewBackgroundColor);
             view.setRadius(dp2px(cardStackViewRadius));
             view.setViewHeader(viewHeader);
